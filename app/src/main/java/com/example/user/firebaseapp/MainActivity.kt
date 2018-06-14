@@ -1,83 +1,80 @@
 package com.example.user.firebaseapp
 
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
-import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.RecyclerView
-import android.text.Editable
-import android.text.TextWatcher
-import android.util.Log
 import android.widget.Button
-import android.widget.EditText
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import java.util.*
+import android.widget.Toast
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageMetadata
+import com.google.firebase.storage.StorageReference
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var firebaseDatabase: FirebaseDatabase
+    lateinit var firebaseStorage: FirebaseStorage
 
-    private var adapter: MessageAdapter = MessageAdapter()
-    private var message: String = ""
+    private var imgPath: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        setRealtimeListener()
+        initCloudStorage()
 
-        val recyclerView: RecyclerView = findViewById(R.id.recycler_view)
-        recyclerView.adapter = adapter
-        recyclerView.layoutManager = LinearLayoutManager(applicationContext)
+        val buttonPick: Button = findViewById(R.id.btn_pick)
+        buttonPick.setOnClickListener { chooseImg() }
 
-        val button: Button = findViewById(R.id.btn_send)
-        button.setOnClickListener { if (!message.isEmpty()) saveMessage(message) }
-
-        val editText: EditText = findViewById(R.id.edit_text)
-        editText.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                message = s.toString()
-            }
-
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        })
+        val buttonUpload: Button = findViewById(R.id.btn_upload)
+        buttonUpload.setOnClickListener { if (imgPath != null) uploadPhoto(imgPath!!) }
     }
 
-    private fun setRealtimeListener() {
-        firebaseDatabase = FirebaseDatabase.getInstance()
-        firebaseDatabase.reference.addValueEventListener(
-            object : ValueEventListener {
-                override fun onDataChange(dataSnapshot: DataSnapshot) {
-                    setAdapterData(dataSnapshot)
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.d("log", "onCancelled")
-                }
-            }
-        )
+    private fun chooseImg() {
+        val intent = Intent()
+        intent.type = "image/*"
+        intent.action = Intent.ACTION_GET_CONTENT
+        startActivityForResult(Intent.createChooser(intent, "Select image"), 1)
     }
 
-    private fun setAdapterData(dataSnapshot: DataSnapshot) {
-        val list: ArrayList<Message> = ArrayList()
-        for (data in dataSnapshot.child("messages").children) {
-            val message = data.getValue(Message::class.java)
-            if (message != null) list.add(message)
+    private fun initCloudStorage() {
+        firebaseStorage = FirebaseStorage.getInstance()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == 1 && resultCode == Activity.RESULT_OK) {
+            if (data != null && data.data != null) {
+                imgPath = data.data
+            }
         }
-        adapter.messageList = list
-        adapter.notifyDataSetChanged()
     }
 
-    private fun saveMessage(messageText: String) {
-        val databaseReference = firebaseDatabase.reference
-        val message = Message("user", messageText)
+    private fun uploadPhoto(fileUri: Uri) {
+        val ref: StorageReference =
+            firebaseStorage.reference.child("img/${fileUri.lastPathSegment}")
 
-        databaseReference
-            .child("messages")
-            .child(UUID.randomUUID().toString())
-            .setValue(message.createMessageObj())
+
+        val mime = StorageMetadata.Builder()
+            .setCustomMetadata("customMeta", "fileMetavalue")
+            .build()
+
+        val task = ref.putFile(fileUri, mime)
+        task.addOnProgressListener {
+            //            OnProgressListener
+
+            val progress = (100.0 * it.bytesTransferred) / it.totalByteCount
+            Toast.makeText(this, "Upload progress ${progress} %", Toast.LENGTH_SHORT).show()
+        }
+
+
+        task.addOnFailureListener {
+            Toast.makeText(this, "OnFailure ${it.message}", Toast.LENGTH_SHORT).show()
+        }
+
+        task.addOnCompleteListener {
+            Toast.makeText(this, "OnComplete", Toast.LENGTH_SHORT).show()
+        }
     }
 }

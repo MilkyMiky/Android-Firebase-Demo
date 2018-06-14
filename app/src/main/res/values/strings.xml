@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">FirebaseApp</string>
-    <string name="send">SEND</string>
-    <string name="write_a_message">Write a message</string>
+    <string name="pick_photo">Pick photo</string>
+    <string name="upload_photo">Upload photo</string>
 </resources>
