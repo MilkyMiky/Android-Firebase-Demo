@@ -2,4 +2,5 @@
     <string name="app_name">FirebaseApp</string>
     <string name="pick_photo">Pick photo</string>
     <string name="upload_photo">Upload photo</string>
+    <string name="download_photo">Download photo</string>
 </resources>
