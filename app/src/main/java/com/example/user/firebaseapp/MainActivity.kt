@@ -9,72 +9,81 @@ import android.widget.Button
 import android.widget.Toast
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageMetadata
-import com.google.firebase.storage.StorageReference
+import java.io.File
+
+const val REQUEST_CODE = 1
+const val INTENT_TITLE = "Select image"
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var firebaseStorage: FirebaseStorage
+    private lateinit var firebaseStorage: FirebaseStorage
 
-    private var imgPath: Uri? = null
+    private var imgUri: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        initCloudStorage()
+        firebaseStorage = FirebaseStorage.getInstance()
 
         val buttonPick: Button = findViewById(R.id.btn_pick)
         buttonPick.setOnClickListener { chooseImg() }
 
         val buttonUpload: Button = findViewById(R.id.btn_upload)
-        buttonUpload.setOnClickListener { if (imgPath != null) uploadPhoto(imgPath!!) }
+        buttonUpload.setOnClickListener { if (imgUri != null) uploadPhoto(imgUri!!) }
+
+        val buttonDownload: Button = findViewById(R.id.btn_download)
+        buttonDownload.setOnClickListener { deleteFile() }
     }
 
     private fun chooseImg() {
-        val intent = Intent()
+        val intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.type = "image/*"
-        intent.action = Intent.ACTION_GET_CONTENT
-        startActivityForResult(Intent.createChooser(intent, "Select image"), 1)
-    }
-
-    private fun initCloudStorage() {
-        firebaseStorage = FirebaseStorage.getInstance()
+        startActivityForResult(Intent.createChooser(intent, INTENT_TITLE), REQUEST_CODE)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-
-        if (requestCode == 1 && resultCode == Activity.RESULT_OK) {
+        if (requestCode == REQUEST_CODE && resultCode == Activity.RESULT_OK) {
             if (data != null && data.data != null) {
-                imgPath = data.data
+                imgUri = data.data
             }
         }
     }
 
     private fun uploadPhoto(fileUri: Uri) {
-        val ref: StorageReference =
-            firebaseStorage.reference.child("img/${fileUri.lastPathSegment}")
-
-
-        val mime = StorageMetadata.Builder()
-            .setCustomMetadata("customMeta", "fileMetavalue")
+        val ref = firebaseStorage.reference.child("img/${fileUri.lastPathSegment}")
+        val metadata = StorageMetadata.Builder()
+            .setCustomMetadata("customMeta", "customMetavalue")
             .build()
 
-        val task = ref.putFile(fileUri, mime)
+        val task = ref.putFile(fileUri, metadata)
         task.addOnProgressListener {
-            //            OnProgressListener
-
             val progress = (100.0 * it.bytesTransferred) / it.totalByteCount
             Toast.makeText(this, "Upload progress ${progress} %", Toast.LENGTH_SHORT).show()
         }
-
-
         task.addOnFailureListener {
             Toast.makeText(this, "OnFailure ${it.message}", Toast.LENGTH_SHORT).show()
         }
-
         task.addOnCompleteListener {
             Toast.makeText(this, "OnComplete", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun downloadFile() {
+        val file = File.createTempFile("img","png")
+        firebaseStorage.reference.child("img/image:38807")
+            .getFile(file)
+            .addOnSuccessListener {
+                Toast.makeText(this, "OnSuccess", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun deleteFile() {
+        firebaseStorage.reference.child("img/image:38807")
+            .delete()
+            .addOnSuccessListener {
+                Toast.makeText(this, "OnSuccess", Toast.LENGTH_SHORT).show()
+            }
     }
 }
