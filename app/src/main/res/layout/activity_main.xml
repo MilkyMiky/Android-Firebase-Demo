@@ -6,21 +6,12 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-
-
-
-    <Button
-        android:id="@+id/btn_download"
-        android:layout_width="wrap_content"
+    <TextView
+        android:id="@id/text"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:padding="16dp"
-        android:text="@string/download_photo"
-        app:layout_constraintBottom_toTopOf="@id/btn_pick"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/btn_pick"
@@ -29,17 +20,17 @@
         android:layout_marginEnd="16dp"
         android:padding="16dp"
         android:text="@string/pick_photo"
-        app:layout_constraintBottom_toTopOf="@id/btn_upload"
+        app:layout_constraintBottom_toTopOf="@id/btn_recognise"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
     <Button
-        android:id="@+id/btn_upload"
+        android:id="@+id/btn_recognise"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
         android:padding="16dp"
-        android:text="@string/upload_photo"
+        android:text="@string/recognise_photo"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

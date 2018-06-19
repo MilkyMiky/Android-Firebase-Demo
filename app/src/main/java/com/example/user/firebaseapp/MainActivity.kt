@@ -2,38 +2,36 @@ package com.example.user.firebaseapp
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
+import android.graphics.Bitmap
 import android.os.Bundle
+import android.provider.MediaStore
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.widget.Button
-import android.widget.Toast
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageMetadata
-import java.io.File
+import android.widget.TextView
+import com.google.firebase.ml.vision.FirebaseVision
+import com.google.firebase.ml.vision.cloud.FirebaseVisionCloudDetectorOptions
+import com.google.firebase.ml.vision.common.FirebaseVisionImage
+
 
 const val REQUEST_CODE = 1
 const val INTENT_TITLE = "Select image"
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var firebaseStorage: FirebaseStorage
-
-    private var imgUri: Uri? = null
+    private var bitmap: Bitmap? = null
+    private lateinit var textView: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        firebaseStorage = FirebaseStorage.getInstance()
-
         val buttonPick: Button = findViewById(R.id.btn_pick)
         buttonPick.setOnClickListener { chooseImg() }
+        val buttonRecognise: Button = findViewById(R.id.btn_recognise)
+        buttonRecognise.setOnClickListener { if (bitmap != null) recognisePhoto(bitmap!!) }
 
-        val buttonUpload: Button = findViewById(R.id.btn_upload)
-        buttonUpload.setOnClickListener { if (imgUri != null) uploadPhoto(imgUri!!) }
-
-        val buttonDownload: Button = findViewById(R.id.btn_download)
-        buttonDownload.setOnClickListener { deleteFile() }
+        textView = findViewById(R.id.text)
     }
 
     private fun chooseImg() {
@@ -44,46 +42,46 @@ class MainActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_CODE && resultCode == Activity.RESULT_OK) {
-            if (data != null && data.data != null) {
-                imgUri = data.data
-            }
-        }
+        if (requestCode == REQUEST_CODE && resultCode == Activity.RESULT_OK)
+            if (data != null && data.data != null)
+                bitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, data.data)
     }
 
-    private fun uploadPhoto(fileUri: Uri) {
-        val ref = firebaseStorage.reference.child("img/${fileUri.lastPathSegment}")
-        val metadata = StorageMetadata.Builder()
-            .setCustomMetadata("customMeta", "customMetavalue")
+    private fun recognisePhoto(bitmap: Bitmap) {
+        val image = FirebaseVisionImage.fromBitmap(bitmap)
+        val detector = FirebaseVision.getInstance().visionTextDetector
+
+        detector.detectInImage(image)
+            .addOnSuccessListener {
+                var text = ""
+                for (block in it.blocks)
+                    for (line in block.lines)
+                        for (element in line.elements)
+                            text += element.text
+                textView.text = text
+            }
+            .addOnFailureListener { }
+    }
+
+
+    private fun cloudRecognition(bitmap: Bitmap) {
+        val image = FirebaseVisionImage.fromBitmap(bitmap)
+        val options = FirebaseVisionCloudDetectorOptions.Builder()
+            .setModelType(FirebaseVisionCloudDetectorOptions.LATEST_MODEL)
+            .setMaxResults(15)
             .build()
 
-        val task = ref.putFile(fileUri, metadata)
-        task.addOnProgressListener {
-            val progress = (100.0 * it.bytesTransferred) / it.totalByteCount
-            Toast.makeText(this, "Upload progress ${progress} %", Toast.LENGTH_SHORT).show()
-        }
-        task.addOnFailureListener {
-            Toast.makeText(this, "OnFailure ${it.message}", Toast.LENGTH_SHORT).show()
-        }
-        task.addOnCompleteListener {
-            Toast.makeText(this, "OnComplete", Toast.LENGTH_SHORT).show()
-        }
-    }
+        val detector = FirebaseVision.getInstance().visionCloudTextDetector
 
-    private fun downloadFile() {
-        val file = File.createTempFile("img","png")
-        firebaseStorage.reference.child("img/image:38807")
-            .getFile(file)
+        detector.detectInImage(image)
             .addOnSuccessListener {
-                Toast.makeText(this, "OnSuccess", Toast.LENGTH_SHORT).show()
+                Log.d("log", "success $it")
+                val text = it.text
+                textView.text = text
             }
-    }
+            .addOnFailureListener {
+                Log.d("log", "error ${it.message}")
 
-    private fun deleteFile() {
-        firebaseStorage.reference.child("img/image:38807")
-            .delete()
-            .addOnSuccessListener {
-                Toast.makeText(this, "OnSuccess", Toast.LENGTH_SHORT).show()
             }
     }
 }
